@@ -1,40 +1,68 @@
-import { useEffect, useState } from 'react';
-
-type T = { id: string; label: string; done: boolean; section: 'pre' | 'arrival' | 'daily' };
-
-const initial: T[] = [
-  { id: 'passport',   label: 'パスポート有効期限確認',                 done: false, section: 'pre' },
-  { id: 'twac',       label: 'TWAC 提出（到着3日前以内）',             done: false, section: 'pre' },
-  { id: 'lucky',      label: 'Lucky Land 事前登録（QR保存）',          done: false, section: 'pre' },
-  { id: 'ins',        label: '空港アクセスを対象カードで決済（保険）', done: false, section: 'pre' },
-  { id: 'lucky_arr',  label: '到着後 Lucky Land 抽選',                 done: false, section: 'arrival' },
-];
+import { useState, useEffect } from "react";
 
 export default function Tasks() {
-  const [list, setList] = useState<T[]>(() => {
-    const c = localStorage.getItem('tasks');
-    return c ? JSON.parse(c) : initial;
-  });
-  useEffect(() => { localStorage.setItem('tasks', JSON.stringify(list)); }, [list]);
+  const [tasks, setTasks] = useState<{ id: number; text: string; done: boolean; section: string }[]>([]);
+  const [newTask, setNewTask] = useState("");
+  const [section, setSection] = useState("出国前");
 
-  const toggle = (id: string) => setList(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  // localStorage から読み込み
+  useEffect(() => {
+    const saved = localStorage.getItem("tasks");
+    if (saved) setTasks(JSON.parse(saved));
+  }, []);
 
-  const section = (key: 'pre' | 'arrival' | 'daily', title: string) => (
-    <div style={{ margin: '12px 0' }}>
-      <b>{title}</b>
-      {list.filter(t => t.section === key).map(t => (
-        <label key={t.id} style={{ display: 'block', cursor: 'pointer' }}>
-          <input type="checkbox" checked={t.done} onChange={() => toggle(t.id)} /> {t.label}
-        </label>
-      ))}
-    </div>
-  );
+  // localStorage に保存
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
+
+  const toggleTask = (id: number) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  };
+
+  const addTask = () => {
+    if (!newTask.trim()) return;
+    setTasks([...tasks, { id: Date.now(), text: newTask.trim(), done: false, section }]);
+    setNewTask("");
+  };
+
+  const sections = ["出国前", "到着後"];
 
   return (
     <div>
       <h1>Tasks</h1>
-      {section('pre', '出国前')}
-      {section('arrival', '到着後')}
+
+      {/* タスク追加フォーム */}
+      <div style={{ marginBottom: "1rem" }}>
+        <input
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          placeholder="新しいタスクを入力"
+        />
+        <select value={section} onChange={(e) => setSection(e.target.value)}>
+          {sections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+        </select>
+        <button onClick={addTask}>追加</button>
+      </div>
+
+      {/* セクション別タスク表示 */}
+      {sections.map(sec => (
+        <div key={sec} style={{ marginBottom: "1rem" }}>
+          <h2>{sec}</h2>
+          {tasks.filter(t => t.section === sec).map(t => (
+            <div key={t.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={t.done}
+                  onChange={() => toggleTask(t.id)}
+                />
+                {t.text}
+              </label>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
